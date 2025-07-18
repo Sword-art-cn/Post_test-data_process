@@ -4,7 +4,7 @@ import requests
 import os
 import time
 from methods.baidu_auth import BaiduBCEAuth  # 认证类
-from methods.response import process_response_sum  # 解析API
+from methods.getting_value import process_response_getting_value  # 解析API（返回数据）
 
 # 配置路径，全局接口
 input_file_path = "intelli_intersection.csv"  # 输入文件路径
@@ -20,14 +20,29 @@ os.makedirs(output_folder, exist_ok=True)
 # 初始化结果列
 def initialize_columns(df, scan_info):
     """初始化结果列，添加扫描信息"""
-    df["interface_accessibility"] = 0
-    df["volume"] = 0
-    df["speedPoint"] = 0
-    df["density"] = 0
-    df["travelTime"] = 0
-    df["delay"] = 0
-    df["exist"] = 0
-    df["fail"] = 0
+    # 初始化与 `result` 字典一致的列
+    df["interface_accessibility"] = 0  # 接口可用性
+    df["volume"] = None  # 流量（改为 None 以匹配 `result` 默认值）
+    df["speedPoint"] = None  # 地点平均车速
+    df["speedArea"] = None  # 区间平均车速
+    df["density"] = None  # 密度
+    df["travelTime"] = None  # 行程时间
+    df["delay"] = None  # 延误
+    df["queueLength"] = None  # 排队长度
+    df["queueInt"] = None  # 排队车辆数
+    df["congestion"] = None  # 拥堵指数
+    df["timeHeadway"] = None  # 车头时距
+    df["spaceHeadway"] = None  # 车头间距
+    df["stopNums"] = None  # 停车次数
+    df["nodeSpaceOccupy"] = None  # 交叉口空间占有率
+    df["nodeTimeOccupy"] = None  # 交叉口时间占有率
+    df["nodeSaturation"] = None  # 交叉口饱和度
+    df["nodeGrnUtilization"] = None  # 交叉口周期绿灯利用率
+    df["nodeAvgGrnQueue"] = None  # 交叉口绿灯启亮时排队长度
+    df["exist"] = 0  # 成功赋值
+    df["fail"] = 0  # 赋值失败
+
+    # 添加扫描信息
     df["start_time"] = scan_info["start_time"]
     df["end_time"] = scan_info["end_time"]
     df["scan_count"] = scan_info["scan_count"]
@@ -75,7 +90,7 @@ def send_request(intersection_id, auth, start_time, end_time):
                 print("文件请求状态码:", file_response.status_code)
 
                 if file_response.status_code == 200:
-                    result = process_response_sum(file_response.text)
+                    result = process_response_getting_value(file_response.text)
                     print("第二次请求处理结果:", result)
                     if result['exist'] == 0:
                         if attempt == max_retries - 1:
@@ -104,16 +119,7 @@ def send_request(intersection_id, auth, start_time, end_time):
         else:
             print(f"\n❌ 路口 {intersection_id} 所有尝试全部失败\n")
 
-    return {
-        "interface_accessibility": 0,
-        "volume": 0,
-        "speedPoint": 0,
-        "density": 0,
-        "travelTime": 0,
-        "delay": 0,
-        "exist": 0,
-        "fail": 0
-    }
+    return process_response_getting_value({})
 
 
 def one_timestamp_full_scan(start_time, end_time, scan_count):
@@ -219,9 +225,9 @@ def print_colored(text, color_code):
 
 if __name__ == "__main__":
     # 时间参数配置
-    begin_scan = 1752454800000  # 开始扫描时间帧（毫秒） 【1月1日9点:1735693200000】
-    delay = 86400000  # 间隔一天
-    end_scan = 1752627600001  # 结束扫描时间帧（毫秒）  【7月16日9点:1735693200000】
+    begin_scan = 1746048857000 # 开始扫描时间帧（毫秒） 【1月1日9点:1735693200000】 【7月14日9点:1752454800000】
+    delay = 3600000  # 间隔【一天：86400000】【一小时：3600000】
+    end_scan = 1746056057000  # 结束扫描时间帧（毫秒）  【7月16日9点:1752627600000】
     scan_time = begin_scan  # 当前扫描时间帧
     full_scan_count = 0
 

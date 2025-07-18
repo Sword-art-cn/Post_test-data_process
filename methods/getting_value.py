@@ -144,7 +144,7 @@ class BaiduBCEAuth:
         return authorization
 
 # 解析API
-def process_response_sum(response_text):
+def process_response_getting_value(response_text):
     result = {
         "interface_accessibility": 0,  # 接口可用性
         "volume": None,  # 流量
@@ -170,6 +170,8 @@ def process_response_sum(response_text):
 
     # 需要跳过赋值的键
     skip_keys = {"exist", "fail"}
+    index_keys = {"nodeSpaceOccupy", "nodeTimeOccupy", "nodeSaturation", "nodeGrnUtilization", "nodeAvgGrnQueue"}
+
 
     try:
         data = json.loads(response_text)
@@ -183,61 +185,31 @@ def process_response_sum(response_text):
             # if not file_urls:  # 如果 urls 是空字典 {}
             #     print("数据返回值为空")
 
-            # 遍历 'stats' 列表，累加 'volume'
+            # 遍历 'stats' 列表，提取数据
             for stat in stats:
                 if (stat["mapElementType"] == "MAP_ELEMENT_TYPE_NODE"
                         and stat["ptcType"] == "OBJECTTYPE_MOTOR"):
                     for key in result:
                         if key in skip_keys:
                             continue  # 跳过统计键
+                        if key in index_keys:
+                            try:
+                                result[key] = stat[key]
+                                result["exist"] += 1  # 赋值成功
+                            except Exception as e:
+                                # print(f"数据 {key}缺失: {e}")
+                                result["fail"] += 1  # 赋值失败
 
                         try:
                             result[key] = stat["volume"]
                             result["exist"] += 1  # 赋值成功
                         except Exception as e:
-                            print(f"数据 {key}缺失: {e}")
+                            # print(f"数据 {key}缺失: {e}")
                             result["fail"] += 1  # 赋值失败
-
-
-
-                    # try:
-                    #         result["volume"] += stat["volume"]
-                    #         result["exist"] += 1
-                    #     except:
-                    #         result["fail"] += 1
-                    #         # print("1")
-                    #     pass
-                    #     try:
-                    #         result["speedPoint"] += stat["speedPoint"]
-                    #         result["exist"] += 1
-                    #     except:
-                    #         result["fail"] += 1
-                    #         # print("2")
-                    #     pass
-                    #     try:
-                    #         result["density"] += stat["density"]
-                    #         result["exist"] += 1
-                    #     except:
-                    #         result["fail"] += 1
-                    #         # print("3")
-                    #     pass
-                    #     try:
-                    #         result["travelTime"] += stat["travelTime"]
-                    #         result["exist"] += 1
-                    #     except:
-                    #         result["fail"] += 1
-                    #         # print("4")
-                    #     pass
-                    #     try:
-                    #         result["delay"] += stat["delay"]
-                    #         result["exist"] += 1
-                    #         # print("done")
-                    #     except:
-                    #         result["fail"] += 1
-                    #         # print("5")
                     break
                 else:
                     continue
+
 
     except:
         print("fail")
@@ -258,9 +230,9 @@ if __name__ == "__main__":
     # 请求参数
     url = "https://xsite.apigw.icvsc.net/v1/data/intersection/file"
     params = {
-        "intersectionId": "773",
-        "startTimestamp": "1746056057000",
-        "endTimestamp": "1746056357000",
+        "intersectionId": "757",
+        "startTimestamp": "1746055811935",
+        "endTimestamp": "1746055811936",
         "dataTypes": "TRAFFIC_FLOW_HISTORY "
     }
     headers = {
@@ -300,8 +272,7 @@ if __name__ == "__main__":
         # 第二次请求：直接获取文件内容（不需要签名，因为URL已包含签名）
         file_response = requests.get(file_url, verify=False)
         print("第二次请求文件请求状态码:", file_response.status_code)
-
-        result = process_response_sum(file_response.text)
+        result = process_response_getting_value(file_response.text)
         print(result)
         print(result['exist'])
         if result['exist'] == 0:
